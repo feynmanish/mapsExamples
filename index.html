@@ -3,14 +3,12 @@
 <head>
 
 <title>MCslp Maps Chapter 13, Ex 1</title>
-
+</head>
  <script src="http://maps.google.com/maps/api/js?sensor=true"></script>
  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
- <script type=text/javascript>
 var map;              // the main map object
-var mapOptions = new google.map.mapOptions(zoom: 4, center: {lat: -33, lng: 151});
 var points = [];      // the list of active points in the current route
-var route;            // the google.maps.Polyline of the current route
+var route;            // the GPolyline of the current route
 var routelistener;    // the listener object for updating the current route
 var rrecording;       // the HTML reference for current recording mode
 var routeidfield;     // the HTML reference of the ID in the form
@@ -21,6 +19,7 @@ var infopanel;        // the document reference of the info panel
 var icontags = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function onLoad() {
+    if (GBrowserIsCompatible()) {
 	infopanel = document.getElementById("infopanel");
 	message = document.getElementById("message");
 	rrecording = document.getElementById("rrecording");
@@ -30,11 +29,14 @@ function onLoad() {
 	routeidfield.value = 0;
 	routetitle.value = '';
 	routedescription.value = '';
-	map = new google.maps.Map(document.getElementById("map"), mapOptions);
+	map = new GMap(document.getElementById("map"));
+	map.addControl(new GSmallZoomControl());
+	map.centerAndZoom(new GPoint(-0.64,52.909444), 2);
+    }
 }
 
 function startRoute() {
-    routelistener = google.maps.event.addDomListener(map, 'click', function(overlay,point) {
+    routelistener = GEvent.addListener(map, 'click', function(overlay,point) {
 	if (route) {
 	    map.removeOverlay(route);
 	}
@@ -43,7 +45,7 @@ function startRoute() {
 	    addmarker(point,'Start Point');
 	}
 	if (points.length > 1) {
-	    route = new google.maps.Polyline(points);
+	    route = new GPolyline(points);
 	    map.addOverlay(route);
 	}
     });
@@ -59,12 +61,12 @@ function clearLastPoint() {
 	return;
     }
     map.removeOverlay(route);
-    route = new google.maps.Polyline(points);
+    route = new GPolyline(points);
     map.addOverlay(route);
 }
 
 function endRoute() {
-    google.maps.event.removeListener(routelistener);
+    GEvent.removeListener(routelistener);
     rrecording.innerHTML = 'Disabled';
 }
 
@@ -86,8 +88,8 @@ function newRoute() {
 
 function delRoute() {
     if (routeidfield.value != 0) {
-	routeidtext = '&routeid=' + encodeURI(routeidfield.value);
-	var request = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+	routeidtext = '&routeid=' + escape(routeidfield.value);
+	var request = new XMLHttpRequest();
 	request.open('GET','/examples/ch13-backend.cgi?m=delroute' + routeidtext,true);
 	request.onreadystatechange = function() {
 	    if (request.readyState == 4) {
@@ -117,16 +119,16 @@ function saveRoute(oldnew) {
     for(i=0;i<points.length;i++) {
 	pointstring = pointstring + i + ':' + points[i].x + ':' + points[i].y + ',';
     }
-    var request = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    var request = GXmlHttp.create();
     var routeidtext = '';
     if ((routeidfield.value != 0) &&
 	(oldnew == 1)) {
-	routeidtext = '&routeid=' + encodeURI(routeidfield.value);
+	routeidtext = '&routeid=' + escape(routeidfield.value);
     }
     request.open('GET','/examples/ch13-backend.cgi?m=saveroute&title=' +
-		 encodeURI(routetitle.value) + routeidtext +
-		 '&desc=' + encodeURI(routedescription.value) +
-		 '&points=' + encodeURI(pointstring), true);
+		 escape(routetitle.value) + routeidtext +
+		 '&desc=' + escape(routedescription.value) +
+		 '&points=' + escape(pointstring), true);
     request.onreadystatechange = function() {
 	if (request.readyState == 4) {
 	    var xmlsource = request.responseXML;
@@ -159,9 +161,9 @@ function showRouteList() {
     baseIcon.shadow = "http://www.google.com/mapfiles/shadow50.png";
     baseIcon.iconSize = new GSize(20,34);
     baseIcon.shadowSize = new GSize(37,34);
-    baseIcon.iconAnchor = new google.maps.Point(9,34);
-    baseIcon.infoWindowAnchor = new google.maps.Point(9,2);
-    baseIcon.infoShadowAnchor = new google.maps.Point(18,25);
+    baseIcon.iconAnchor = new GPoint(9,34);
+    baseIcon.infoWindowAnchor = new GPoint(9,2);
+    baseIcon.infoShadowAnchor = new GPoint(18,25);
 
     var request = GXmlHttp.create();
     request.open('GET','/examples/ch13-backend.cgi?m=listroutes', true);
@@ -178,7 +180,7 @@ function showRouteList() {
 		    routelist[i].getAttribute("routeid") +
 		    ');">' + routelist[i].getAttribute("title") +
 		    '</a><br/>';
-		var point = new google.maps.Point(parseFloat(routelist[i].getAttribute("lat")),
+		var point = new GPoint(parseFloat(routelist[i].getAttribute("lat")),
 				       parseFloat(routelist[i].getAttribute("lng")));
 		points.push(point);
 
@@ -236,12 +238,12 @@ function loadRoute(routeid,msgtext) {
 
 	    var routepoints = xmlsource.documentElement.getElementsByTagName("point");
 	    for (var i=0;i < routepoints.length;i++) {
-		var point = new google.maps.Point(parseFloat(routepoints[i].getAttribute("lat")),
+		var point = new GPoint(parseFloat(routepoints[i].getAttribute("lat")),
 				       parseFloat(routepoints[i].getAttribute("lng")));
 
 		points.push(point);
 	    }
-	    route = new google.maps.Polyline(points);
+	    route = new GPolyline(points);
 	    map.addOverlay(route);
 	    addmarker(points[0],'Start here');
 	    addmarker(points[points.length-1],'Finish here');
@@ -253,8 +255,8 @@ function loadRoute(routeid,msgtext) {
 
 function addmarker(point,message,icon)
 {
-    var marker = new google.maps.Marker(point,icon);
-      google.maps.event.addDomListener(marker,
+    var marker = new GMarker(point,icon);
+      GEvent.addListener(marker,
 			 'click',
 			 function() {
 	  marker.openInfoWindowHtml('<b>' + message + '</b>');
@@ -265,21 +267,21 @@ function addmarker(point,message,icon)
 
 function recenterandzoom(points) {
     var latpoints = [];
-    var lngoogle.maps.Points = [];
+    var lngpoints = [];
 
     for(var i=0;i<points.length;i++) {
 	latpoints.push(points[i].y);
-	lngoogle.maps.Points.push(points[i].x);
+	lngpoints.push(points[i].x);
     }
 
     latpoints.sort(function(x,y) { return x-y; });
-    lngoogle.maps.Points.sort(function(x,y) { return x-y; });
-    var new google.maps.Lat = latpoints[0] + ((latpoints[latpoints.length-1] - latpoints[0])/2);
-    var newlng = lngoogle.maps.Points[0] + ((lngoogle.maps.Points[lngoogle.maps.Points.length-1] - lngoogle.maps.Points[0])/2);
+    lngpoints.sort(function(x,y) { return x-y; });
+    var newlat = latpoints[0] + ((latpoints[latpoints.length-1] - latpoints[0])/2);
+    var newlng = lngpoints[0] + ((lngpoints[lngpoints.length-1] - lngpoints[0])/2);
 
-    var newpoint = new google.maps.Point(parseFloat(newlng),parseFloat(newlat));
+    var newpoint = new GPoint(parseFloat(newlng),parseFloat(newlat));
 
-    var idealspan = new GSize(parseFloat(Math.abs(lngoogle.maps.Points[lngoogle.maps.Points.length-1]-lngoogle.maps.Points[0])),
+    var idealspan = new GSize(parseFloat(Math.abs(lngpoints[lngpoints.length-1]-lngpoints[0])),
 			      parseFloat(Math.abs(latpoints[latpoints.length-1]-latpoints[0])));
 
     map.zoomTo(1);
